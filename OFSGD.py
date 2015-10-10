@@ -21,7 +21,7 @@ def OFSGD(X, Y, options, id_list):
         f_t = dot(transpose(w), x_t)
         y_t = Y[id - 1]
 
-        if y_t * f_t < 0:
+        if y_t * f_t <= 0:
             error_count += 1
             error_list.append(id)
 
@@ -34,6 +34,6 @@ def OFSGD(X, Y, options, id_list):
         if t % 10 == 1:
             mistakes.append(error_count/float(t))
 
-    return mistakes, error_list
+    return mistakes
 
 
