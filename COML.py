@@ -1,93 +1,151 @@
 from numpy import *
 from pandas import read_csv
 import matplotlib.pyplot as plt
+from scipy.sparse import bsr_matrix
+from preProcess import preProcess
+from loadSparseData import loadSparseData
 
-# X1 = array([ [1, 6, 4, 12, 5, 5, 3, 4, 1, 67],
-#             [4, 12, 4, 21, 1, 4, 3, 3, 1, 49],
-#             [1, 42, 2, 79, 1, 4, 3, 4, 2, 45],
-#             [4, 36, 2, 91, 5, 3, 3, 4, 4, 35],
-#             [4, 24, 2, 28, 3, 5, 3, 4, 2, 53]])
+fname1 = 'pu1'
+fname2 = 'pu2'
+fname3 = 'pu3'
+fname4 = 'pua'
+X1, Y1 = loadSparseData(fname1)
+X2, Y2 = loadSparseData(fname2)
+X3, Y3 = loadSparseData(fname3)
+X4, Y4 = loadSparseData(fname4)
 
-# X2 = array([[2, 15, 1, 13, 2, 3, 4, 2, 2, 25],
-#             [2, 30, 4, 84, 1, 4, 3, 2, 2, 49],
-#             [4, 48, 2, 48, 1, 1, 3, 2, 3, 33],
-#             [1, 36, 2, 82, 1, 3, 3, 2, 2, 26],
-#             [1, 45, 2, 18, 1, 3, 3, 4, 4, 23]])
-fname = 'german'
+print 'preProcess X'
+X1 = preProcess(X1)
+X2 = preProcess(X2)
+X3 = preProcess(X3)
+X4 = preProcess(X4)
 
-X1 = read_csv('./COML_data/' + fname + '_pos.csv', header = None, dtype = float)
-X1 = array(X1)
-X2 = read_csv('./COML_data/' + fname + '_neg.csv', header = None, dtype = float)
-X2 = array(X2)
+print 'start COML'
 
-Y1 = 1
-Y2 = -1
+def update_CM(i, X, Y, w, u):
+    x_t = X[i]
+    f_t = dot(w, x_t)
+    loss_w = max(0, 1 - Y[i] * f_t)
+    if loss_w == 0:
+        tau = 0
+    else:
+        tau = min(C, (fai1+fai2-dot(Y[i]*(fai1*w+fai2*u), x_t)/linalg.norm(x_t)))
+    w = fai1 * w + fai2 * u + tau * Y[i] * x_t.reshape(1, len(x_t))
+    return w, f_t
 
-#def COML(X, Y):
+def update_GM(i, X, Y, w, u):
+    x_t = X[i]
+    fu_t = dot(u, x_t)
+    loss_u = max(0, 1 - Y[i] * fu_t)
+    if loss_u > 0:
+        tau = min(C, (1 - Y[i]*fu_t)/linalg.norm(x_t))
+        u = u + tau * Y[i] * x_t.reshape(1, len(x_t))
+    return u, fu_t
+
 if 1:
     C = 1
-    T = min(len(X1), len(X2))
-    w1 = zeros([X1.shape[1], 1])
-    w2 = zeros([X2.shape[1], 1])
-    u = zeros([X2.shape[1], 1])
-    fai1 = 0.5
-    fai2 = 0.5
+    T = max(len(X1), len(X2), len(X3), len(X4))
+    w1 = zeros([1, X1.shape[1]])
+    w2 = zeros([1, X2.shape[1]])
+    w3 = zeros([1, X3.shape[1]])
+    w4 = zeros([1, X4.shape[1]])
+    u = zeros([1, X2.shape[1]])
+    len1 = X1.shape[0]
+    len2 = X2.shape[0]
+    len3 = X3.shape[0]
+    len4 = X4.shape[0]
+
+    fai1 = 0
+    fai2 = 1
     error_count = 0
+    error1 = 0
+    error2 = 0
+    error3 = 0
+    error4 = 0
+    er1_list = []
+    er2_list = []
+    er3_list = []
+    er4_list = []
     mistake_list = []
+    cal_count = 0
+    cal1 = 0
+    cal2 = 0
+    cal3 = 0
+    cal4 = 0
     for i in range(T):
-        #print 'i = ', i
-        # update collaborative models
-        x1_t = X1[i]
-        #print 'x1_t', x1_t
-        f_t1 = dot(x1_t, w1)
-        #print 'f_t1', f_t1
+        ## colabrative model
+        if i < len1:
+            w1, f_t1 = update_CM(i, X1, Y1, w1, u)
+            cal1 += 1
+            cal_count += 1
 
-        loss_w1 = max(0, 1 - Y1 * f_t1)
-        if loss_w1 == 0:
-            tau = 0
-        else:
-            tau = min(C, (fai1+fai2-dot(x1_t, Y1*(fai1*w1+fai2*u))/linalg.norm(x1_t)))
-        #print 'tau = ', tau
-        w1 = fai1 * w1 + fai2 * u + tau * Y1 * x1_t.reshape(len(x1_t), 1)
-        #print 'w1', transpose(w1)
-        #update w2
-        x2_t = X2[i]
-        #print 'x2_t', x2_t
-        f_t2 = dot(x2_t, w2)
-        #print 'f_t2', f_t2
+        if i < len2:
+            w2, f_t2 = update_CM(i, X2, Y2, w2, u)
+            cal2 += 1
+            cal_count += 1
 
-        loss_w2 = max(0, 1 - Y2 * f_t2)
-        if loss_w2 == 0:
-            tau = 0
-        else:
-            tau = min(C, (fai1+fai2-dot(x2_t, Y2*(fai1*w2+fai2*u))/linalg.norm(x2_t)))
-        #print 'tau', tau
-        w2 = fai1 * w2 + fai2 * u + tau * Y2 * x2_t.reshape(len(x2_t), 1)
-        #print 'w2', transpose(w2)
-        #update global models
-        x1_t = X1[i]
-        fu_t1 = dot(x1_t, u)
-        loss_u = max(0, 1 - Y1 * fu_t1)
-        if loss_u > 0:
-            tau = min(C, (1 - Y1*fu_t1)/linalg.norm(x1_t))
-            u = u + tau * Y1 * x1_t.reshape(len(x1_t), 1)
 
-        x2_t = X2[i]
-        fu_t2 = dot(x2_t, u)
-        loss_u = max(0, 1 - Y2 * fu_t2)
-        if loss_u > 0:
-            tau = min(C, (1 - Y2*fu_t2)/linalg.norm(x2_t))
-            u = u + tau * Y2 * x2_t.reshape(len(x2_t), 1)
+        if i < len3:
+            w3, f_t3 = update_CM(i, X3, Y3, w3, u)
+            cal3 += 1
+            cal_count += 1
 
-        if Y1 * f_t1 <= 0:
-            error_count += 1
-        if Y2 * f_t2 <= 0:
-            error_count += 1
+        if i < len4:
+            w4, f_t4 = update_CM(i, X4, Y4, w4, u)
+            cal4 += 1
+            cal_count += 1
+
+        # global model
+        if i < len1:
+            u, fu_t1 = update_GM(i, X1, Y1, w1, u)
+
+        if i < len2:
+            u, fu_t2 = update_GM(i, X2, Y2, w2, u)
+
+        if i < len3:
+            u, fu_t3 = update_GM(i, X3, Y3, w3, u)
+
+        if i < len4:
+            u, fu_t4 = update_GM(i, X4, Y4, w4, u)
+
+
+        # caculate error count
+        alf = 1
+        beta = 0
+        if i < len1:
+            if Y1[i] * (alf * f_t1 + beta * fu_t1) <= 0:
+                error1 += 1
+                error_count += 1
+        if i < len2:
+            if Y2[i] * (alf * f_t2 + beta * fu_t2) <= 0:
+                error2 += 1
+                error_count += 1
+        if i < len3:
+            if Y3[i] * (alf * f_t3 + beta * fu_t3) <= 0:
+                error3 += 1
+                error_count += 1
+        if i < len4:
+            if Y4[i] * (alf * f_t4 + beta * fu_t4) <= 0:
+                error4 += 1
+                error_count += 1
+
 
         if i%10 == 1:
-            mistake_list.append(error_count/float(2*i))
-
+            mistake_list.append(error_count/float(cal_count))
+            er1_list.append(error1/float(cal1)
+                )
+            er2_list.append(error2/float(cal2)
+                )
+            er3_list.append(error3/float(cal3)
+                )
+            er4_list.append(error4/float(cal4)
+                )
 print mistake_list
 plt.figure(figsize=(8,4))
 plt.plot(mistake_list, label="OFS", color="red",linewidth=2)
+plt.plot(er1_list, label="OFS", color="green",linewidth=2)
+plt.plot(er2_list, label="OFS", color="blue",linewidth=2)
+plt.plot(er3_list, label="OFS", color="yellow",linewidth=2)
+plt.plot(er4_list, label="OFS", color="black",linewidth=2)
 plt.show()
+
