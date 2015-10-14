@@ -1,8 +1,8 @@
 from truncate import truncate
 from numpy import *
 
-def OFSGD(X, Y, options, id_list):
-    NumFeature = options.NumFeature
+def OFSGD(X, Y, id_list, rateFeature):
+    NumFeature = max(1, rateFeature*round(X.shape[1]))
     ID = id_list
     error_count = 0
     mistakes = []
